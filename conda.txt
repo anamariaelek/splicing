@@ -1,13 +1,6 @@
 conda create -y -n splicevo python=3.10
 conda activate splicevo
 conda install -y numpy pandas matplotlib scipy
-conda install -y \
-	bioconda::ucsc-bedgraphtobigwig \
-	bioconda::ucsc-genepredtobed    \
-	bioconda::ucsc-genepredtogtf    \
-	bioconda::ucsc-bedtogenepred    \
-	bioconda::ucsc-gtftogenepred    \
-	bioconda::ucsc-gff3togenepred
 conda install -y -c conda-forge jupyterlab
 conda install -y -c conda-forge cudatoolkit-dev
 conda install -y -c bioconda gffutils
