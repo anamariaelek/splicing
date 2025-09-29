@@ -54,22 +54,33 @@ for group in $groups; do
     # Now make $bams iterable
     bams=$(echo "$bams" | tr ',' '\n')
 
-    # Run process for each BAM in the group, only if output does not exist
+    # Run process for each BAM in the group in parallel, only if output does not exist
     for bam in $bams; do
         name=$(basename "$bam" .sorted.bam)
         output="$out_dir"/"$name".SpliSER.tsv
+        
+        # Check if BAM file is corrupted
+        if ! samtools quickcheck "$bam" 2>/dev/null; then
+            echo "[ERROR] BAM file $bam is corrupted, skipping..."
+            continue
+        fi
+        
         if [ ! -f "$output" ]; then
             spliser process \
                 -B "$bam" \
                 -I "$out_dir"/"$group".introns.tsv \
                 --isStranded -s rf \
                 -A "$gtf" -t transcript \
-                -o "$out_dir"/"$name"
-            echo "[$(date)] Finished process for $name"
+                -o "$out_dir"/"$name" &
+            echo "[$(date)] Started process for $name (PID: $!)"
         else
             echo "[INFO] Skipping process for $bam: $output exists."
         fi
     done
+    
+    # Wait for all background processes to finish
+    wait
+    echo "[$(date)] All BAM processing jobs completed for $group"
 
     # Make SamplesFile.tsv file if it doesn't exist
     # it should contain info for all bam files in the format:

@@ -1,3 +1,4 @@
 data/genomes
+notebooks/__pycache__
 results/spliser
 scripts/logs
