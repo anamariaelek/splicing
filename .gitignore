@@ -1,4 +1,6 @@
 data/genomes
 notebooks/__pycache__
-results/spliser
+results/spliser/
+results/data_processing*
+data/
 scripts/logs
