@@ -5,13 +5,20 @@ import torch
 from pathlib import Path
 import os
 import sys
+import time
 
 from splicevo.model import SplicevoModel
 from splicevo.training import SpliceTrainer, SpliceDataset
+from splicevo.training.normalization import (
+    normalize_usage_arrays,
+    save_normalization_stats
+)
 from torch.utils.data import DataLoader
 
 
 def main():
+    script_start = time.time()
+    
     # Set resource limits for shared system
     # Limit CPU threads to be considerate of other users
     torch.set_num_threads(4)  # Limit PyTorch CPU threads
@@ -33,6 +40,7 @@ def main():
     
     # Load data
     print("Loading data...")
+    load_start = time.time()
     data_path = '/home/elek/projects/splicing/results/data_processing_subset/processed_data.npz'
     data = np.load(data_path)
     
@@ -44,27 +52,57 @@ def main():
         'sse': data['usage_sse']
     }
     
-    print(f"Loaded {len(sequences)} samples")
+    load_time = time.time() - load_start
+    print(f"Loaded {len(sequences)} samples in {load_time:.2f}s")
     print(f"  Sequence shape: {sequences.shape}")
     print(f"  Labels shape: {labels.shape}")
     print(f"  Usage shape: {usage_arrays['alpha'].shape}")
+
+    print("Original usage array statistics:")
+    for key, arr in usage_arrays.items():
+        valid = ~np.isnan(arr)
+        print(f"  '{key}': [{arr[valid].min():.1f}, {arr[valid].max():.1f}] "
+              f"(mean={arr[valid].mean():.1f}, std={arr[valid].std():.1f})")
     
+    normalized_usage, usage_stats = normalize_usage_arrays(
+        usage_arrays,
+        method='per_sample_cpm' 
+    )
+    
+    print("Normalized statistics:")
+    for key in ['alpha', 'beta', 'sse']:
+        arr = normalized_usage[key]
+        valid = ~np.isnan(arr)
+        print(f"  '{key}': [{arr[valid].min():.3f}, {arr[valid].max():.3f}] "
+              f"(mean={arr[valid].mean():.3f}, std={arr[valid].std():.3f})")
+    
+    # Save normalization stats
+    checkpoint_dir = '/home/elek/projects/splicing/results/models/checkpoints'
+    os.makedirs(checkpoint_dir, exist_ok=True)
+    
+    stats_path = Path(checkpoint_dir) / 'usage_normalization_stats.json'
+    save_normalization_stats(usage_stats, stats_path)
+    print(f"Saved normalization stats to: {stats_path}")
+
     # Split train/val (80/20)
     n_samples = len(sequences)
     n_train = int(0.8 * n_samples)
     
     # Create datasets
+    dataset_start = time.time()
     train_dataset = SpliceDataset(
         sequences[:n_train],
         labels[:n_train],
-        {k: v[:n_train] for k, v in usage_arrays.items()}
+        {k: v[:n_train] for k, v in normalized_usage.items()}
     )
     
     val_dataset = SpliceDataset(
         sequences[n_train:],
         labels[n_train:],
-        {k: v[n_train:] for k, v in usage_arrays.items()}
+        {k: v[n_train:] for k, v in normalized_usage.items()}
     )
+    dataset_time = time.time() - dataset_start
+    print(f"Created datasets in {dataset_time:.2f}s")
 
     # Calculate class distribution in training data
     print("\nCalculating class weights...")
@@ -111,6 +149,7 @@ def main():
 
     # Initialize model
     print("\nInitializing model...")
+    model_start = time.time()
     model = SplicevoModel(
         embed_dim=256,   # keep this small for shared system
         num_resblocks=8, # reduce for shared system
@@ -122,7 +161,9 @@ def main():
     
     # Count parameters
     n_params = sum(p.numel() for p in model.parameters())
+    model_time = time.time() - model_start
     print(f"Model parameters: {n_params:,}")
+    print(f"Model initialized in {model_time:.2f}s")
     
     # Where to save checkpoints
     checkpoint_dir='/home/elek/projects/splicing/results/models/checkpoints'
@@ -130,6 +171,7 @@ def main():
 
     # Initialize trainer
     print("\nInitializing trainer...")
+    trainer_start = time.time()
     trainer = SpliceTrainer(
         model=model,
         train_loader=train_loader,
@@ -143,19 +185,32 @@ def main():
         checkpoint_dir=checkpoint_dir,
         use_tensorboard=True
     )
+    trainer_time = time.time() - trainer_start
+    print(f"Trainer initialized in {trainer_time:.2f}s")
     
     # Train
     print("\nStarting training...")
+    train_start = time.time()
     trainer.train(
         n_epochs=10,
         verbose=True,
         save_best=True,
         early_stopping_patience=5
     )
+    train_time = time.time() - train_start
+    
+    total_time = time.time() - script_start
     
     print("\nTraining completed!")
     print(f"Best validation loss: {trainer.best_val_loss:.4f}")
     print(f"Checkpoints saved to: {checkpoint_dir}/")
+    print(f"\nTiming Summary:")
+    print(f"  Data loading:     {load_time:8.2f}s ({100*load_time/total_time:5.1f}%)")
+    print(f"  Dataset creation: {dataset_time:8.2f}s ({100*dataset_time/total_time:5.1f}%)")
+    print(f"  Model init:       {model_time:8.2f}s ({100*model_time/total_time:5.1f}%)")
+    print(f"  Trainer init:     {trainer_time:8.2f}s ({100*trainer_time/total_time:5.1f}%)")
+    print(f"  Training:         {train_time:8.2f}s ({100*train_time/total_time:5.1f}%)")
+    print(f"  Total time:       {total_time:8.2f}s")
 
 
 if __name__ == '__main__':
