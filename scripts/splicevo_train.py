@@ -1,4 +1,4 @@
-"""Simple training script for Splicevo model using the training module."""
+"""Simple training script for Splicevo model."""
 
 import numpy as np
 import torch
@@ -66,9 +66,25 @@ def main():
         {k: v[n_train:] for k, v in usage_arrays.items()}
     )
 
+    # Calculate class distribution in training data
+    print("\nCalculating class weights...")
+    
+    train_labels_flat = labels[:n_train].flatten()
+    unique_classes, class_counts = np.unique(train_labels_flat, return_counts=True)
+    print(f"Class distribution in training data:")
+    for cls, count in zip(unique_classes, class_counts):
+        print(f"  Class {cls}: {count:,} ({100*count/len(train_labels_flat):.2f}%)")
+    
+    # Compute inverse frequency weights
+    total_samples = len(train_labels_flat)
+    class_weights = total_samples / (len(unique_classes) * class_counts)
+    class_weights = class_weights / class_weights.mean()
+    class_weights = torch.FloatTensor(class_weights)
+    print(f"Class weights (inverse frequency): {class_weights}")
+
     # Create dataloaders 
-    batch_size = 16  # be conservative for shared system
-    num_workers = 8 # reduced to leave CPU for others
+    batch_size = 64  # be conservative for shared system
+    num_workers = 32 # reduce to leave CPU for others
 
     train_loader = DataLoader(
         train_dataset,
@@ -93,15 +109,14 @@ def main():
     print(f"Batch size: {batch_size}")
     print(f"CPU workers: {num_workers}")
 
-    # Initialize model with small size for shared system
+    # Initialize model
     print("\nInitializing model...")
     model = SplicevoModel(
-        embed_dim=256,   # keep small for shared system
-        num_resblocks=4, # reduce for shared system
+        embed_dim=256,   # keep this small for shared system
+        num_resblocks=8, # reduce for shared system
         dilation_strategy='exponential',
         num_classes=3,
         n_conditions=usage_arrays['alpha'].shape[2],
-        dropout=0.1,
         context_len=4500
     )
     
@@ -122,9 +137,11 @@ def main():
         device=device,
         learning_rate=1e-4,
         weight_decay=1e-5,
-        splice_weight=1.0,
-        usage_weight=0.5,
-        checkpoint_dir=checkpoint_dir
+        splice_weight=0.5,
+        usage_weight=0.5, 
+        class_weights=class_weights,
+        checkpoint_dir=checkpoint_dir,
+        use_tensorboard=True
     )
     
     # Train

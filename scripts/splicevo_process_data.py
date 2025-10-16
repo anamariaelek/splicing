@@ -7,7 +7,7 @@ from datetime import datetime
 from splicevo.data import MultiGenomeDataLoader
 
 # Create output directory for results
-output_dir = "results/data_processing"
+output_dir = "/home/elek/projects/splicing/results/data_processing"
 os.makedirs(output_dir, exist_ok=True)
 
 print(f"Starting data processing at {datetime.now()}")
@@ -16,9 +16,7 @@ print("=" * 60)
 # Step 1: Initialize loader
 print("Step 1: Initializing MultiGenomeDataLoader...")
 step1_start = time.time()
-loader = MultiGenomeDataLoader(
-    orthology_file='data/mazin/ortholog_groups.tsv'
-)
+loader = MultiGenomeDataLoader()
 step1_time = time.time() - step1_start
 print(f"✓ Loader initialized in {step1_time:.2f} seconds")
 print()
@@ -31,9 +29,9 @@ print("  Adding human genome...")
 human_start = time.time()
 loader.add_genome(
     genome_id="human_GRCh37",
-    genome_path="../../sds/sd17d003/Anamaria/genomes/mazin/fasta/Homo_sapiens.fa.gz", 
-    gtf_path="../../sds/sd17d003/Anamaria/genomes/mazin/gtf/Homo_sapiens.gtf.gz",
-    chromosomes=['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', 'X', 'Y'],
+    genome_path="/home/elek/sds/sd17d003/Anamaria/genomes/mazin/fasta/Homo_sapiens.fa.gz", 
+    gtf_path="/home/elek/sds/sd17d003/Anamaria/genomes/mazin/gtf/Homo_sapiens.gtf.gz",
+    chromosomes=['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', 'X', 'Y', 'MT'],
     metadata={"species": "homo_sapiens", "assembly": "GRCh37"}
 )
 human_time = time.time() - human_start
@@ -43,9 +41,9 @@ print("  Adding mouse genome...")
 mouse_start = time.time()
 loader.add_genome(
     genome_id="mouse_GRCm38",
-    genome_path="../../sds/sd17d003/Anamaria/genomes/mazin/fasta/Mus_musculus.fa.gz",
-    gtf_path="../../sds/sd17d003/Anamaria/genomes/mazin/gtf/Mus_musculus.gtf.gz",
-    chromosomes=['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', 'X', 'Y'],
+    genome_path="/home/elek/sds/sd17d003/Anamaria/genomes/mazin/fasta/Mus_musculus.fa.gz",
+    gtf_path="/home/elek/sds/sd17d003/Anamaria/genomes/mazin/gtf/Mus_musculus.gtf.gz",
+    chromosomes=['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', 'X', 'Y', 'MT'],
     metadata={"species": "mus_musculus", "assembly": "GRCm38"}
 )
 mouse_time = time.time() - mouse_start
@@ -65,20 +63,26 @@ human_usage_start = time.time()
 try:
     loader.add_usage_file(
         genome_id="human_GRCh37", 
-        usage_file="results/spliser/usage_stats/Human.Cerebellum.29ypb.combined.nochr.tsv",
+        usage_file="/home/elek/projects/splicing/results/spliser/Human.Cerebellum.29ypb.combined.nochr.tsv",
         tissue="Cerebellum",
         timepoint="29ypb"
     )
     loader.add_usage_file(
         genome_id="human_GRCh37",
-        usage_file="results/spliser/usage_stats/Human.Cerebellum.0dpb.combined.nochr.tsv",
+        usage_file="/home/elek/projects/splicing/results/spliser/Human.Cerebellum.0dpb.combined.nochr.tsv",
         tissue="Cerebellum", 
         timepoint="0dpb"
     )
     loader.add_usage_file(
         genome_id="human_GRCh37",
-        usage_file="results/spliser/usage_stats/Human.Heart.0dpb.combined.nochr.tsv", 
+        usage_file="/home/elek/projects/splicing/results/spliser/Human.Heart.0dpb.combined.nochr.tsv", 
         tissue="Heart",
+        timepoint="0dpb"
+    )
+    loader.add_usage_file(
+        genome_id="human_GRCh37",
+        usage_file="/home/elek/projects/splicing/results/spliser/Human.Kidney.0dpb.combined.nochr.tsv", 
+        tissue="Kidney",
         timepoint="0dpb"
     )
     human_usage_time = time.time() - human_usage_start
@@ -93,13 +97,19 @@ mouse_usage_start = time.time()
 try:
     loader.add_usage_file(
         genome_id="mouse_GRCm38",
-        usage_file="results/spliser/usage_stats/Mouse.Cerebellum.0dpb.combined.nochr.tsv",
+        usage_file="/home/elek/projects/results/spliser/Mouse.Cerebellum.4wpb.combined.nochr.tsv",
+        tissue="Cerebellum",
+        timepoint="4wpb"
+    )
+    loader.add_usage_file(
+        genome_id="mouse_GRCm38",
+        usage_file="/home/elek/projects/results/spliser/Mouse.Cerebellum.0dpb.combined.nochr.tsv",
         tissue="Cerebellum",
         timepoint="0dpb"
     )
     loader.add_usage_file(
         genome_id="mouse_GRCm38", 
-        usage_file="results/spliser/usage_stats/Mouse.Heart.0dpb.combined.nochr.tsv",
+        usage_file="/home/elek/projects/results/spliser/Mouse.Heart.0dpb.combined.nochr.tsv",
         tissue="Heart",
         timepoint="0dpb"
     )
@@ -141,20 +151,22 @@ step5_start = time.time()
 
 sequences, labels, usage_arrays, metadata = loader.to_arrays(
     window_size=1000,
-    context_size=4500
+    context_size=4500,
+    n_workers=4
 )
 
 step5_time = time.time() - step5_start
 print(f"✓ Data converted to arrays in {step5_time:.2f} seconds")
 print(f"  Shape of sequences: {sequences.shape}")
 print(f"  Shape of labels: {labels.shape}")
+print(f"    Labels format: [:, :, 0] = donor sites, [:, :, 1] = acceptor sites")
 print(f"  Shape of usage_arrays['alpha']: {usage_arrays['alpha'].shape}")
 print(f"  Shape of usage_arrays['beta']: {usage_arrays['beta'].shape}")
 print(f"  Shape of usage_arrays['sse']: {usage_arrays['sse'].shape}")
 print(f"  Shape of metadata: {metadata.shape}")
 
 # Get usage array info
-usage_info = loader.get_usage_array_info()
+usage_info = loader.get_usage_array_info(usage_arrays)
 print(f"  Available conditions: {[c['display_name'] for c in usage_info['conditions']]}")
 print()
 

@@ -3,6 +3,7 @@ conda activate splicevo
 conda install -y numpy pandas matplotlib scipy
 conda install -y -c conda-forge jupyterlab
 conda install -y -c conda-forge cudatoolkit-dev
+conda install -y -c conda-forge tensorboard
 conda install -y -c bioconda gffutils
 pip install torch ninja
 pip install flash-attn --no-build-isolation
