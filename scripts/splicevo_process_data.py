@@ -156,7 +156,7 @@ sequences, labels, usage_arrays, metadata = loader.to_arrays(
 )
 
 step5_time = time.time() - step5_start
-print(f"✓ Data converted to arrays in {step5_time:.2f} seconds")
+print(f"  Data converted to arrays in {step5_time:.2f} seconds")
 print(f"  Shape of sequences: {sequences.shape}")
 print(f"  Shape of labels: {labels.shape}")
 print(f"    Labels format: [:, :, 0] = donor sites, [:, :, 1] = acceptor sites")
@@ -174,16 +174,70 @@ print()
 print("Step 6: Saving processed data...")
 save_start = time.time()
 
-np.savez_compressed(
-    os.path.join(output_dir, "processed_data.npz"),
-    sequences=sequences, 
-    labels=labels,
-    usage_alpha=usage_arrays['alpha'],
-    usage_beta=usage_arrays['beta'],
-    usage_sse=usage_arrays['sse']
-)
+use_mmap = True
+if use_mmap:
+
+    import json
+    from pathlib import Path
+
+    # Create memmap files
+    memmap_dir = Path(output_dir) / "memmap"
+    os.makedirs(memmap_dir, exist_ok=True)
+
+    # Save as memmap
+    seq_mmap = np.memmap(
+        memmap_dir / 'sequences.mmap',
+        dtype=np.float32,
+        mode='w+',
+        shape=sequences.shape
+    )
+    seq_mmap[:] = sequences[:]
+    seq_mmap.flush()
+    
+    labels_mmap = np.memmap(
+        memmap_dir / 'labels.mmap',
+        dtype=np.int64,
+        mode='w+',
+        shape=labels.shape
+    )
+    labels_mmap[:] = labels[:]
+    labels_mmap.flush()
+    
+    for key in ['alpha', 'beta', 'sse']:
+        usage_mmap = np.memmap(
+            memmap_dir / f'usage_{key}.mmap',
+            dtype=np.float32,
+            mode='w+',
+            shape=usage_arrays[key].shape
+        )
+        usage_mmap[:] = usage_arrays[key][:]
+        usage_mmap.flush()
+    
+    # Save metadata
+    metadata = {
+        'sequences_shape': sequences.shape,
+        'labels_shape': labels.shape,
+        'usage_shape': usage_arrays['alpha'].shape
+    }
+    with open(memmap_dir / 'metadata.json', 'w') as f:
+        json.dump(metadata, f, indent=2)
+
+    print(f"  Memory-mapped files saved to: {memmap_dir}")
+
+else:
+    # Save as compressed npz
+    np.savez_compressed(
+        os.path.join(output_dir, "processed_data.npz"),
+        sequences=sequences, 
+        labels=labels,
+        usage_alpha=usage_arrays['alpha'],
+        usage_beta=usage_arrays['beta'],
+        usage_sse=usage_arrays['sse']
+    )
+    print(f"  Processed data saved to: {output_dir}/processed_data.npz")
 
 metadata.to_csv(os.path.join(output_dir, "metadata.csv.gz"), index=False, compression='gzip')
+print(f"  Metadata saved to: {output_dir}/metadata.csv.gz")    
 
 # Save usage info
 import json
@@ -195,7 +249,7 @@ usage_summary = loader.get_usage_summary()
 usage_summary.to_csv(os.path.join(output_dir, "usage_summary.csv"), index=False)
 
 save_time = time.time() - save_start
-print(f"✓ Processed data saved in {save_time:.2f} seconds")
+print(f"  Data saved in {save_time:.2f} seconds")
 print()
 
 # Summary timing report
