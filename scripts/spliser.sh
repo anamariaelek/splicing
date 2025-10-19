@@ -60,10 +60,10 @@ for group in $groups; do
         output="$out_dir"/"$name".SpliSER.tsv
         
         # Check if BAM file is corrupted
-        if ! samtools quickcheck "$bam" 2>/dev/null; then
-            echo "[ERROR] BAM file $bam is corrupted, skipping..."
-            continue
-        fi
+       #if ! samtools quickcheck "$bam" 2>/dev/null; then
+       #     echo "[ERROR] BAM file $bam is corrupted, skipping..."
+       #     continue
+       # fi
         
         if [ ! -f "$output" ]; then
             spliser process \
