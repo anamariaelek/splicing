@@ -2,14 +2,14 @@
 #SBATCH --partition=cpu-single
 #SBATCH --nodes=1
 #SBATCH --ntasks-per-node=1
-#SBATCH --cpus-per-task=4
-#SBATCH --time=24:00:00
-#SBATCH --mem=10gb
+#SBATCH --cpus-per-task=8
+#SBATCH --time=36:00:00
+#SBATCH --mem=5gb
 #SBATCH --job-name=spliser
-#SBATCH --array=1-94
+#SBATCH --array=70,95,96,107,111
 #SBATCH --output=logs/spliser_%A_%a.out
-#SBATCH --error=logs/spliser_%A_%a.err
 
+# Number of groups per species:
 # Mouse 1-94
 # Human 1-196
 # Macaque 1-114
@@ -18,9 +18,12 @@
 # Opossum 1-97
 # Chicken 1-65
 
+# Activate conda environment
+source activate spliser
+
 # Define base path
 DIR="$HOME/projects/splicing/data/spliser"
-SPECIES=Mouse
+SPECIES=Macaque
 
 # Get the group name for this array task
 GROUP=$(sed -n "${SLURM_ARRAY_TASK_ID}p" "$DIR/groups_${SPECIES}.txt")
