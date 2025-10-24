@@ -1,5 +1,3 @@
-In this directory I pre-process the data for training a deep learning splicing model.
-
 # SpliSER
 
 I use SpliSER tool to estimate splice site usage in different samples.

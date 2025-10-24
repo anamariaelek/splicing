@@ -1,7 +1,9 @@
 data/genomes
 notebooks/__pycache__
 results/data_processing*
+results/input_subset/
 results/models/
+results/predictions
 results/spliser/
 data/
 scripts/logs

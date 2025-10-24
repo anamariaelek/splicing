@@ -8,6 +8,7 @@ import sys
 import time
 import json
 from datetime import datetime
+import argparse
 
 from splicevo.model import SplicevoModel
 from splicevo.training import SpliceTrainer, SpliceDataset
@@ -21,6 +22,12 @@ from torch.utils.data import DataLoader
 USE_MEMMAP = True 
 
 def main():
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='Train Splicevo model')
+    parser.add_argument('--resume', type=str, default=None,
+                        help='Resume from checkpoint (path to .pt file, or "auto" to find latest)')
+    args = parser.parse_args()
+    
     script_start = time.time()
     
     # Set resource limits for shared system
@@ -258,8 +265,9 @@ def main():
     # Model parameters
     model_params = {
         'embed_dim': 128,
-        'num_resblocks': 6,
-        'dilation_strategy': 'exponential',
+        'num_resblocks': 8,
+        'dilation_strategy': 'alternating', 
+        'alternate': 2, # 2 blocks per dilation; increase this and the number of layers for more input data
         'num_classes': 3,
         'n_conditions': usage_arrays['alpha'].shape[2],
         'context_len': 4500,
@@ -374,22 +382,30 @@ def main():
         n_epochs=training_params['n_epochs'],
         verbose=True,
         save_best=True,
-        early_stopping_patience=training_params['early_stopping_patience']
+        early_stopping_patience=training_params['early_stopping_patience'],
+        resume_from=args.resume
     )
     train_time = time.time() - train_start
     
     total_time = time.time() - script_start
     
+    # Format time as hrs:min:sec
+    def format_time(seconds):
+        hours = int(seconds // 3600)
+        minutes = int((seconds % 3600) // 60)
+        secs = int(seconds % 60)
+        return f"{hours}h {minutes}m {secs}s"
+    
     log_print("\nTraining completed!")
     log_print(f"Best validation loss: {trainer.best_val_loss:.4f}")
     log_print(f"Checkpoints saved to: {checkpoint_dir}/")
     log_print(f"\nTiming Summary:")
-    log_print(f"  Data loading:     {load_time:8.2f}s ({100*load_time/total_time:5.1f}%)")
-    log_print(f"  Dataset creation: {dataset_time:8.2f}s ({100*dataset_time/total_time:5.1f}%)")
-    log_print(f"  Model init:       {model_time:8.2f}s ({100*model_time/total_time:5.1f}%)")
-    log_print(f"  Trainer init:     {trainer_time:8.2f}s ({100*trainer_time/total_time:5.1f}%)")
-    log_print(f"  Training:         {train_time:8.2f}s ({100*train_time/total_time:5.1f}%)")
-    log_print(f"  Total time:       {total_time:8.2f}s")
+    log_print(f"  Data loading:     {format_time(load_time):>12} ({100*load_time/total_time:5.1f}%)")
+    log_print(f"  Dataset creation: {format_time(dataset_time):>12} ({100*dataset_time/total_time:5.1f}%)")
+    log_print(f"  Model init:       {format_time(model_time):>12} ({100*model_time/total_time:5.1f}%)")
+    log_print(f"  Trainer init:     {format_time(trainer_time):>12} ({100*trainer_time/total_time:5.1f}%)")
+    log_print(f"  Training:         {format_time(train_time):>12} ({100*train_time/total_time:5.1f}%)")
+    log_print(f"  TOTAL TIME:       {format_time(total_time):>12}")
     log_print(f"\nTraining ended at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
 

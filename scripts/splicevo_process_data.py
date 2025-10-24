@@ -7,7 +7,8 @@ from datetime import datetime
 from splicevo.data import MultiGenomeDataLoader
 
 # Create output directory for results
-output_dir = "/home/elek/projects/splicing/results/data_processing"
+group="test" # "train" or "test"
+output_dir = "/home/elek/projects/splicing/results/input_subset"
 os.makedirs(output_dir, exist_ok=True)
 
 print(f"Starting data processing at {datetime.now()}")
@@ -22,28 +23,39 @@ print(f"✓ Loader initialized in {step1_time:.2f} seconds")
 print()
 
 # Step 2: Add genomes
-print("Step 2: Adding genomes...")
+print("Step 2: Adding genomes")
+print("  Adding human genome")
 step2_start = time.time()
+if group == "train":
+    human_chromosomes = ['2', '4', '6', '8', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', 'X', 'Y', 'MT']
+elif group == "test":
+    human_chromosomes = ['1', '3', '5', '7', '9']
 
-print("  Adding human genome...")
 human_start = time.time()
+print("  (chrs " + ", ".join(human_chromosomes) + ")")
 loader.add_genome(
     genome_id="human_GRCh37",
     genome_path="/home/elek/sds/sd17d003/Anamaria/genomes/mazin/fasta/Homo_sapiens.fa.gz", 
     gtf_path="/home/elek/sds/sd17d003/Anamaria/genomes/mazin/gtf/Homo_sapiens.gtf.gz",
-    chromosomes=['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', 'X', 'Y', 'MT'],
+    chromosomes=human_chromosomes,
     metadata={"species": "homo_sapiens", "assembly": "GRCh37"}
 )
 human_time = time.time() - human_start
 print(f"  ✓ Human genome added in {human_time:.2f} seconds")
 
-print("  Adding mouse genome...")
+print("  Adding mouse genome:")
+if group == "train":
+    mouse_chromosomes = ['2', '3', '4', '6', '8', '10', '11', '12', '14', '15', '16', '17', '18', '19', 'X', 'Y', 'MT']
+elif group == "test":
+    mouse_chromosomes = ['1', '5', '7', '9', '13']
+
 mouse_start = time.time()
+print("  (chrs " + ", ".join(mouse_chromosomes) + ")")
 loader.add_genome(
     genome_id="mouse_GRCm38",
     genome_path="/home/elek/sds/sd17d003/Anamaria/genomes/mazin/fasta/Mus_musculus.fa.gz",
     gtf_path="/home/elek/sds/sd17d003/Anamaria/genomes/mazin/gtf/Mus_musculus.gtf.gz",
-    chromosomes=['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', 'X', 'Y', 'MT'],
+    chromosomes=mouse_chromosomes,
     metadata={"species": "mus_musculus", "assembly": "GRCm38"}
 )
 mouse_time = time.time() - mouse_start
@@ -79,12 +91,6 @@ try:
         tissue="Heart",
         timepoint="0dpb"
     )
-    loader.add_usage_file(
-        genome_id="human_GRCh37",
-        usage_file="/home/elek/projects/splicing/results/spliser/Human.Kidney.0dpb.combined.nochr.tsv", 
-        tissue="Kidney",
-        timepoint="0dpb"
-    )
     human_usage_time = time.time() - human_usage_start
     print(f"  ✓ Human usage files added in {human_usage_time:.2f} seconds")
 except FileNotFoundError as e:
@@ -97,19 +103,19 @@ mouse_usage_start = time.time()
 try:
     loader.add_usage_file(
         genome_id="mouse_GRCm38",
-        usage_file="/home/elek/projects/results/spliser/Mouse.Cerebellum.4wpb.combined.nochr.tsv",
+        usage_file="/home/elek/projects/splicing/results/spliser/Mouse.Cerebellum.4wpb.combined.nochr.tsv",
         tissue="Cerebellum",
         timepoint="4wpb"
     )
     loader.add_usage_file(
         genome_id="mouse_GRCm38",
-        usage_file="/home/elek/projects/results/spliser/Mouse.Cerebellum.0dpb.combined.nochr.tsv",
+        usage_file="/home/elek/projects/splicing/results/spliser/Mouse.Cerebellum.0dpb.combined.nochr.tsv",
         tissue="Cerebellum",
         timepoint="0dpb"
     )
     loader.add_usage_file(
         genome_id="mouse_GRCm38", 
-        usage_file="/home/elek/projects/results/spliser/Mouse.Heart.0dpb.combined.nochr.tsv",
+        usage_file="/home/elek/projects/splicing/results/spliser/Mouse.Heart.0dpb.combined.nochr.tsv",
         tissue="Heart",
         timepoint="0dpb"
     )
@@ -132,9 +138,7 @@ print()
 print("Step 4: Loading all genome data...")
 step4_start = time.time()
 
-loader.load_all_genomes_data(
-    max_transcripts_per_genome=None  # Load all transcripts
-)
+loader.load_all_genomes_data()
 
 step4_time = time.time() - step4_start
 print(f"✓ All genome data loaded in {step4_time:.2f} seconds")
@@ -151,12 +155,11 @@ step5_start = time.time()
 
 sequences, labels, usage_arrays, metadata = loader.to_arrays(
     window_size=1000,
-    context_size=4500,
-    n_workers=4
+    context_size=4500
 )
 
 step5_time = time.time() - step5_start
-print(f"  Data converted to arrays in {step5_time:.2f} seconds")
+print(f"✓ Data converted to arrays in {step5_time:.2f} seconds")
 print(f"  Shape of sequences: {sequences.shape}")
 print(f"  Shape of labels: {labels.shape}")
 print(f"    Labels format: [:, :, 0] = donor sites, [:, :, 1] = acceptor sites")
@@ -174,82 +177,28 @@ print()
 print("Step 6: Saving processed data...")
 save_start = time.time()
 
-use_mmap = True
-if use_mmap:
+np.savez_compressed(
+    os.path.join(output_dir, f"processed_data_{group}.npz"),
+    sequences=sequences, 
+    labels=labels,
+    usage_alpha=usage_arrays['alpha'],
+    usage_beta=usage_arrays['beta'],
+    usage_sse=usage_arrays['sse']
+)
 
-    import json
-    from pathlib import Path
-
-    # Create memmap files
-    memmap_dir = Path(output_dir) / "memmap"
-    os.makedirs(memmap_dir, exist_ok=True)
-
-    # Save as memmap
-    seq_mmap = np.memmap(
-        memmap_dir / 'sequences.mmap',
-        dtype=np.float32,
-        mode='w+',
-        shape=sequences.shape
-    )
-    seq_mmap[:] = sequences[:]
-    seq_mmap.flush()
-    
-    labels_mmap = np.memmap(
-        memmap_dir / 'labels.mmap',
-        dtype=np.int64,
-        mode='w+',
-        shape=labels.shape
-    )
-    labels_mmap[:] = labels[:]
-    labels_mmap.flush()
-    
-    for key in ['alpha', 'beta', 'sse']:
-        usage_mmap = np.memmap(
-            memmap_dir / f'usage_{key}.mmap',
-            dtype=np.float32,
-            mode='w+',
-            shape=usage_arrays[key].shape
-        )
-        usage_mmap[:] = usage_arrays[key][:]
-        usage_mmap.flush()
-    
-    # Save metadata
-    metadata = {
-        'sequences_shape': sequences.shape,
-        'labels_shape': labels.shape,
-        'usage_shape': usage_arrays['alpha'].shape
-    }
-    with open(memmap_dir / 'metadata.json', 'w') as f:
-        json.dump(metadata, f, indent=2)
-
-    print(f"  Memory-mapped files saved to: {memmap_dir}")
-
-else:
-    # Save as compressed npz
-    np.savez_compressed(
-        os.path.join(output_dir, "processed_data.npz"),
-        sequences=sequences, 
-        labels=labels,
-        usage_alpha=usage_arrays['alpha'],
-        usage_beta=usage_arrays['beta'],
-        usage_sse=usage_arrays['sse']
-    )
-    print(f"  Processed data saved to: {output_dir}/processed_data.npz")
-
-metadata.to_csv(os.path.join(output_dir, "metadata.csv.gz"), index=False, compression='gzip')
-print(f"  Metadata saved to: {output_dir}/metadata.csv.gz")    
+metadata.to_csv(os.path.join(output_dir, f"metadata_{group}.csv.gz"), index=False, compression='gzip')
 
 # Save usage info
 import json
-with open(os.path.join(output_dir, "usage_info.json"), 'w') as f:
+with open(os.path.join(output_dir, f"usage_info_{group}.json"), 'w') as f:
     json.dump(usage_info, f, indent=2, default=str)
 
 # Save usage summary
 usage_summary = loader.get_usage_summary()
-usage_summary.to_csv(os.path.join(output_dir, "usage_summary.csv"), index=False)
+usage_summary.to_csv(os.path.join(output_dir, f"usage_summary_{group}.csv"), index=False)
 
 save_time = time.time() - save_start
-print(f"  Data saved in {save_time:.2f} seconds")
+print(f"✓ Processed data saved in {save_time:.2f} seconds")
 print()
 
 # Summary timing report
