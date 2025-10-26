@@ -1,16 +1,15 @@
 #!/bin/sh
 
 # Data directories
-BAM_DIR=$HOME/sds/sd17d003/Margarida/EvoDevoData/
+BAM_DIR=$HOME/sds/sd17d003/bw16f004_backup/Margarida/EvoDevo
 GTF_DIR=$HOME/sds/sd17d003/Anamaria/genomes/mazin/gtf/
 OUT_DIR=$HOME/projects/splicing/results/spliser/
 
 # Load samples from txt file samples.txt
-# Format: Library\tUsed\tSpecies_sci\tSpecies\tOrgan\tDevelopmental_stage\tStage_detail\tSex\tFilename\tGroup\tTotal_number_reads\tTotal_number_aligned_reads\t%_aligned_reads
 samples_file=$HOME/projects/splicing/data/spliser/samples.txt
 
 # Column indices (1-based):
-# Species = $4, Species_sci = $3, Filename = $9, Group = $10
+# Species = $2, Species_sci = $4, Group = $10, Filename = $12
 
 # Accept optional group argument
 if [ -n "$1" ]; then
@@ -25,8 +24,8 @@ for group in $groups; do
     start_time=$(date +%s)
     echo "[$(date)] Starting processing for $group"
 
-    species=$(awk -F'\t' -v grp="$group" 'NR>1 && $10==grp {print $4; exit}' "$samples_file")
-    species_sci=$(awk -F'\t' -v grp="$group" 'NR>1 && $10==grp {print $3; exit}' "$samples_file")
+    species=$(awk -F'\t' -v grp="$group" 'NR>1 && $10==grp {print $2; exit}' "$samples_file")
+    species_sci=$(awk -F'\t' -v grp="$group" 'NR>1 && $10==grp {print $4; exit}' "$samples_file")
 
     # Build path to GTF file
     gtf="$GTF_DIR"/"$species_sci".gtf.gz
@@ -39,7 +38,7 @@ for group in $groups; do
     bams=$(awk -F'\t' -v grp="$group" -v path="$BAM_DIR"/"$species"/ '
     NR>1 && $10==grp {
         if (n++) printf ",";
-        printf "%s%s", path, $9
+        printf "%s%s", path, $12
     }' "$samples_file")
     
     # Check if preCombineIntrons output exists

@@ -1,7 +1,0 @@
-Chicken
-Human
-Macaque
-Mouse
-Opossum
-Rabbit
-Rat
