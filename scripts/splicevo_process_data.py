@@ -65,14 +65,14 @@ for tissue in ["Brain", "Cerebellum", "Heart", "Kidney", "Liver", "Ovary", "Test
             timepoint = str(timepoint_int)
             loader.add_usage_file(
                 genome_id="human_GRCh37", 
-                usage_file=f"/home/elek/projects/splicing/results/spliser/Human.{tissue}.{timepoint}.combined.fixed.tsv",
+                usage_file=f"/home/elek/projects/splicing/results/spliser/Homo_sapiens/Human.{tissue}.{timepoint}.combined.tsv",
                 tissue=tissue,
                 timepoint=timepoint
             )
-            print(f"  ✓ Human usage files added in {human_usage_time:.2f} seconds")
         except FileNotFoundError as e:
-            print(f"  ⚠ Human usage files not found: {e}")
+            print(f"  Human usage files not found: {e}")
     human_usage_time = time.time() - human_usage_start  
+    print(f"  ✓ Human usage files added in {human_usage_time:.2f} seconds")
 
 step3_time = time.time() - step3_start
 print(f"✓ Usage files processed in {step3_time:.2f} seconds")
