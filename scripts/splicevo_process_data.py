@@ -3,12 +3,17 @@ import pickle
 import os
 import numpy as np
 from datetime import datetime
+import json
+import argparse
 
 from splicevo.data import MultiGenomeDataLoader
+parser = argparse.ArgumentParser(description="Process splicing data with MultiGenomeDataLoader")
+parser.add_argument("--group", choices=["train", "test"], required=True, help="Data group: 'train' or 'test'")
+parser.add_argument("--output_dir", type=str, required=True, help="Directory to save results")
+args = parser.parse_args()
 
-# Create output directory for results
-group="test" # "train" or "test"
-output_dir = "/home/elek/projects/splicing/results/input_subset"
+group = args.group
+output_dir = args.output_dir
 os.makedirs(output_dir, exist_ok=True)
 
 print(f"Starting data processing at {datetime.now()}")
@@ -43,24 +48,6 @@ loader.add_genome(
 human_time = time.time() - human_start
 print(f"  ✓ Human genome added in {human_time:.2f} seconds")
 
-print("  Adding mouse genome:")
-if group == "train":
-    mouse_chromosomes = ['2', '3', '4', '6', '8', '10', '11', '12', '14', '15', '16', '17', '18', '19', 'X', 'Y', 'MT']
-elif group == "test":
-    mouse_chromosomes = ['1', '5', '7', '9', '13']
-
-mouse_start = time.time()
-print("  (chrs " + ", ".join(mouse_chromosomes) + ")")
-loader.add_genome(
-    genome_id="mouse_GRCm38",
-    genome_path="/home/elek/sds/sd17d003/Anamaria/genomes/mazin/fasta/Mus_musculus.fa.gz",
-    gtf_path="/home/elek/sds/sd17d003/Anamaria/genomes/mazin/gtf/Mus_musculus.gtf.gz",
-    chromosomes=mouse_chromosomes,
-    metadata={"species": "mus_musculus", "assembly": "GRCm38"}
-)
-mouse_time = time.time() - mouse_start
-print(f"  ✓ Mouse genome added in {mouse_time:.2f} seconds")
-
 step2_time = time.time() - step2_start
 print(f"✓ All genomes added in {step2_time:.2f} seconds")
 print()
@@ -72,58 +59,20 @@ step3_start = time.time()
 # Add human usage files if they exist
 print("  Adding human usage files...")
 human_usage_start = time.time()
-try:
-    loader.add_usage_file(
-        genome_id="human_GRCh37", 
-        usage_file="/home/elek/projects/splicing/results/spliser/Human.Cerebellum.29ypb.combined.nochr.tsv",
-        tissue="Cerebellum",
-        timepoint="29ypb"
-    )
-    loader.add_usage_file(
-        genome_id="human_GRCh37",
-        usage_file="/home/elek/projects/splicing/results/spliser/Human.Cerebellum.0dpb.combined.nochr.tsv",
-        tissue="Cerebellum", 
-        timepoint="0dpb"
-    )
-    loader.add_usage_file(
-        genome_id="human_GRCh37",
-        usage_file="/home/elek/projects/splicing/results/spliser/Human.Heart.0dpb.combined.nochr.tsv", 
-        tissue="Heart",
-        timepoint="0dpb"
-    )
-    human_usage_time = time.time() - human_usage_start
-    print(f"  ✓ Human usage files added in {human_usage_time:.2f} seconds")
-except FileNotFoundError as e:
-    print(f"  ⚠ Human usage files not found: {e}")
+for tissue in ["Brain", "Cerebellum", "Heart", "Kidney", "Liver", "Ovary", "Testis"]:
+    for timepoint_int in range(1, 16):
+        try:
+            timepoint = str(timepoint_int)
+            loader.add_usage_file(
+                genome_id="human_GRCh37", 
+                usage_file=f"/home/elek/projects/splicing/results/spliser/Human.{tissue}.{timepoint}.combined.fixed.tsv",
+                tissue=tissue,
+                timepoint=timepoint
+            )
+            print(f"  ✓ Human usage files added in {human_usage_time:.2f} seconds")
+        except FileNotFoundError as e:
+            print(f"  ⚠ Human usage files not found: {e}")
     human_usage_time = time.time() - human_usage_start  
-
-# Add mouse usage files if they exist
-print("  Adding mouse usage files...")
-mouse_usage_start = time.time()
-try:
-    loader.add_usage_file(
-        genome_id="mouse_GRCm38",
-        usage_file="/home/elek/projects/splicing/results/spliser/Mouse.Cerebellum.4wpb.combined.nochr.tsv",
-        tissue="Cerebellum",
-        timepoint="4wpb"
-    )
-    loader.add_usage_file(
-        genome_id="mouse_GRCm38",
-        usage_file="/home/elek/projects/splicing/results/spliser/Mouse.Cerebellum.0dpb.combined.nochr.tsv",
-        tissue="Cerebellum",
-        timepoint="0dpb"
-    )
-    loader.add_usage_file(
-        genome_id="mouse_GRCm38", 
-        usage_file="/home/elek/projects/splicing/results/spliser/Mouse.Heart.0dpb.combined.nochr.tsv",
-        tissue="Heart",
-        timepoint="0dpb"
-    )
-    mouse_usage_time = time.time() - mouse_usage_start
-    print(f"  ✓ Mouse usage files added in {mouse_usage_time:.2f} seconds")
-except FileNotFoundError as e:
-    print(f"  ⚠ Mouse usage files not found: {e}")
-    mouse_usage_time = time.time() - mouse_usage_start
 
 step3_time = time.time() - step3_start
 print(f"✓ Usage files processed in {step3_time:.2f} seconds")
@@ -189,7 +138,6 @@ np.savez_compressed(
 metadata.to_csv(os.path.join(output_dir, f"metadata_{group}.csv.gz"), index=False, compression='gzip')
 
 # Save usage info
-import json
 with open(os.path.join(output_dir, f"usage_info_{group}.json"), 'w') as f:
     json.dump(usage_info, f, indent=2, default=str)
 
@@ -209,10 +157,8 @@ total_time = time.time() - step1_start
 print(f"Step 1 - Initialize loader:     {step1_time:8.2f} seconds")
 print(f"Step 2 - Add genomes:           {step2_time:8.2f} seconds")
 print(f"  - Human genome:               {human_time:8.2f} seconds")
-print(f"  - Mouse genome:               {mouse_time:8.2f} seconds")
 print(f"Step 3 - Add usage files:       {step3_time:8.2f} seconds")
 print(f"  - Human usage files:          {human_usage_time:8.2f} seconds")
-print(f"  - Mouse usage files:          {mouse_usage_time:8.2f} seconds")
 print(f"Step 4 - Load genome data:      {step4_time:8.2f} seconds")
 print(f"Step 5 - Convert to arrays:     {step5_time:8.2f} seconds")
 print(f"Step 6 - Save processed data:   {save_time:8.2f} seconds")
