@@ -54,7 +54,6 @@ def read_gtf(
 
     return gtf
 
-
 def filter_gtf(
     gtf: pd.DataFrame,
     column_name: str,
@@ -85,3 +84,87 @@ def filter_gtf(
     else:
       raise ValueError('specified column_name is not in gtf.')
   return gtf
+
+def extract_introns(gtf_df):
+    """
+    Extract introns from a GTF annotations DataFrame.
+    
+    Parameters:
+    -----------
+    gtf_df : pandas.DataFrame
+        DataFrame with GTF annotations (as produced by GTFProcessor.load_gtf)
+        Expected columns include:
+        - chrom
+        - source
+        - feature (gene, transcript, exon, etc.)
+        - start
+        - end
+        - strand
+        - gene_id
+        - transcript_id
+        
+    Returns:
+    --------
+    pandas.DataFrame
+        DataFrame with intron annotations in GTF format
+    """
+    # Filter for exons only
+    exons_df = gtf_df[gtf_df['feature'] == 'exon'].copy()
+    
+    if exons_df.empty:
+        return pd.DataFrame()
+    
+    # Sort by transcript_id, chromosome, and start position
+    exons_df = exons_df.sort_values(['transcript_id', 'chrom', 'start'])
+
+    introns = []
+    
+    # Group by transcript to find introns between exons
+    for transcript_id, group in exons_df.groupby('transcript_id'):
+        group = group.sort_values('start')
+        
+        # Skip transcripts with only one exon (no introns)
+        if len(group) < 2:
+            continue
+        
+        # Get common attributes for this transcript
+        chrom = group.iloc[0]['chrom']
+        strand = group.iloc[0]['strand']
+        source = group.iloc[0].get('source', '.')
+        score = group.iloc[0].get('score', '.')
+        frame = '.'
+        gene_id = group.iloc[0].get('gene_id', '')
+        
+        # Find introns between consecutive exons
+        for i in range(len(group) - 1):
+            intron_start = group.iloc[i]['end'] + 1
+            intron_end = group.iloc[i + 1]['start'] - 1
+            
+            # Only add valid introns (where start <= end)
+            if intron_start <= intron_end:
+                intron = {
+                    'chrom': chrom,
+                    'source': source,
+                    'feature': 'intron',
+                    'start': intron_start,
+                    'end': intron_end,
+                    'score': score,
+                    'strand': strand,
+                    'frame': frame,
+                    'gene_id': gene_id,
+                    'transcript_id': transcript_id
+                }
+                
+                # Copy any additional attributes from the exon
+                for col in group.columns:
+                    if col not in intron:
+                        intron[col] = group.iloc[i][col]
+                
+                introns.append(intron)
+    
+    # Create DataFrame from introns
+    if introns:
+        introns_df = pd.DataFrame(introns)
+        return introns_df
+    else:
+        return pd.DataFrame()
