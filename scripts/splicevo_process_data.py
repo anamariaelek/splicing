@@ -8,12 +8,14 @@ import argparse
 
 from splicevo.data import MultiGenomeDataLoader
 parser = argparse.ArgumentParser(description="Process splicing data with MultiGenomeDataLoader")
-parser.add_argument("--group", choices=["train", "test"], required=True, help="Data group: 'train' or 'test'")
+parser.add_argument("--group", choices=["train", "test", "subset"], required=True, help="Data group: 'train' or 'test' or 'subset'")
 parser.add_argument("--output_dir", type=str, required=True, help="Directory to save results")
+parser.add_argument("--n_cpus", type=int, default=8, help="Number of CPU cores to use for processing")
 args = parser.parse_args()
 
 group = args.group
 output_dir = args.output_dir
+n_cpus = args.n_cpus
 os.makedirs(output_dir, exist_ok=True)
 
 print(f"Starting data processing at {datetime.now()}")
@@ -35,6 +37,8 @@ if group == "train":
     human_chromosomes = ['2', '4', '6', '8', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20', '21', '22', 'X', 'Y', 'MT']
 elif group == "test":
     human_chromosomes = ['1', '3', '5', '7', '9']
+elif group == "subset":
+    human_chromosomes = ['2', '4']
 
 human_start = time.time()
 print("  (chrs " + ", ".join(human_chromosomes) + ")")
@@ -104,7 +108,9 @@ step5_start = time.time()
 
 sequences, labels, usage_arrays, metadata = loader.to_arrays(
     window_size=1000,
-    context_size=4500
+    context_size=4500,
+    alpha_threshold=5,
+    n_workers=n_cpus
 )
 
 step5_time = time.time() - step5_start
