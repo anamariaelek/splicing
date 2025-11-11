@@ -6,5 +6,6 @@ results/models/
 results/predictions
 results/spliser/
 results/sptransformer/
+scripts/spliser_job_*
 data/
 scripts/logs

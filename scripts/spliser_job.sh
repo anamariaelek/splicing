@@ -6,17 +6,20 @@
 #SBATCH --time=24:00:00
 #SBATCH --mem=5gb
 #SBATCH --job-name=spliser
-#SBATCH --array=1-35
-#SBATCH --output=logs/Macaque/spliser_%A_%a.out
+#SBATCH --array=1-42
+#SBATCH --output=logs/Chicken/spliser_%A_%a.out
 
 # Number of groups per species:
 # Human 1-92
 # Mouse 1-94
 # Macaque 1-114
-# Rat 1-102
-# Rabbit 1-102
-# Opossum 1-97
-# Chicken 1-65
+# Rat 1-90
+# Rabbit 1-92
+# Opossum 1-82
+# Chicken 1-42
+
+# Exit on erroe
+set -e
 
 # Activate conda environment
 source activate spliser
@@ -25,7 +28,7 @@ source activate spliser
 DIR="$HOME/projects/splicing/data/spliser"
 
 # Define species to process
-SPECIES=Macaque
+SPECIES=Chicken
 
 # Prepare groups of samples
 awk -F'\t' 'NR>1 {print $10}' "$DIR/samples.txt" | sort | uniq > "$DIR/groups.txt"
