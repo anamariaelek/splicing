@@ -3,6 +3,7 @@ notebooks/__pycache__
 results/data_processing*
 results/input_subset/
 results/models/
+results/old
 results/predictions
 results/spliser/
 results/sptransformer/
