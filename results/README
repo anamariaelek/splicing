@@ -1,0 +1,24 @@
+
+data_processing             - human, all tissues + timepoints, mmap
+data_processing_brain       - human, brain + all timepoints, mmap
+data_processing_brain_npz   - human, brain + all timepoints, npz-->mmap
+
+models
+├─ brain                - trained on data_processing_brain, with all usage values
+├─ brain_sse            - TBD trained on data_processing_brain, with SSE values only
+├─ brain_npz            - trained on data_processing_brain_npz, with all usage values --> this one was well correlated
+├─ resnet               - trained on data_processing, with all usage values
+├─ resnet_sse           - trained on data_processing, with SSE values only
+├─ subset
+└──subset_filtered
+
+predictions_brain       - using brain
+predictions_brain_sse   - using brain_sse
+predictions_brain_npz   - using brain_npz
+predictions_resnet      - using resnet
+predictions_resnet_sse  - using resnet_sse
+predictions_subset
+
+Conclusions:
+- training using memmap arrays works same as npz - very good correlations of true and predicted SSE values are still observed when training only on brain data
+- training with all tissue values leads to same (poor) accuracy, but doesn't lead to so good correlations of true and predicted SSE values across timepoints as does training only on brain data

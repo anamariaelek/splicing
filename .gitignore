@@ -4,7 +4,8 @@ results/data_processing*
 results/input_subset/
 results/models/
 results/old
-results/predictions
+ipredictions
+results/predictions_*
 results/spliser/
 results/sptransformer/
 scripts/spliser_job_*
