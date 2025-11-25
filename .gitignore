@@ -1,13 +1,9 @@
-data/genomes
+data/
 notebooks/__pycache__
-results/data_processing*
-results/input_subset/
+results/data/
 results/models/
-results/old
-ipredictions
-results/predictions_*
+results/predictions/
 results/spliser/
 results/sptransformer/
-scripts/spliser_job_*
-data/
 scripts/logs
+scripts/spliser_job_*

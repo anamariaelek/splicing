@@ -1,23 +1,34 @@
-
-data_processing             - human, all tissues + timepoints, mmap
-data_processing_brain       - human, brain + all timepoints, mmap
-data_processing_brain_npz   - human, brain + all timepoints, npz-->mmap
+data                        - multiple species (human, mouse), all tissues + timepoints, mmap (w. updt process_data.py)
+├─ hsap_mmus                - human + mouse data
+|    ├─ load                     - all data
+|    └──split                    - train-test split      
+├─ processing             - human, all tissues + timepoints, mmap
+├─ processing_brain       - human, brain + all timepoints, mmap
+└──processing_brain_npz   - human, brain + all timepoints, npz --> mmap
 
 models
-├─ brain                - trained on data_processing_brain, with all usage values
-├─ brain_sse            - TBD trained on data_processing_brain, with SSE values only
-├─ brain_npz            - trained on data_processing_brain_npz, with all usage values --> this one was well correlated
-├─ resnet               - trained on data_processing, with all usage values
-├─ resnet_sse           - trained on data_processing, with SSE values only
-├─ subset
-└──subset_filtered
+├─ brain_npz            - trained on data/processing_brain_npz, all usage values
+├─ brain                - trained on data/processing_brain, all usage values
+├─ brain_mse            - trained on data/processing_brain, SSE values only, MSE loss
+├─ brain_bce            - trained on data/processing_brain, SSE values only, BCE loss
+├─ brain_weightmse      - trained on data/processing_brain, SSE values only, weighted MSE loss
+├─ brain_hybridloss     - trained on data/processing_brain, SSE values only, hybrid loss
+├─ resnet               - trained on data/processing, all usage values
+├─ resnet_mse           - trained on data/processing, SSE values only, MSE loss
+├─ resnet_weightmse     - trained on data/processing, SSE values only, weighted MSE loss
+└──resnet_hybridloss    - trained on data/processing, SSE values only, hybrid loss
 
-predictions_brain       - using brain
-predictions_brain_sse   - using brain_sse
-predictions_brain_npz   - using brain_npz
-predictions_resnet      - using resnet
-predictions_resnet_sse  - using resnet_sse
-predictions_subset
+predictions
+├─ brain_npz            - using brain_npz
+├─ brain                - using brain
+├─ brain_mse            - using brain_mse
+├─ brain_bce            - using brain_bce
+├─ brain_weightmse      - using brain_weightmse
+├─ brain_hybridloss     - using brain_hybridloss
+├─ resnet               - using resnet
+├─ resnet_mse           - using resnet_mse
+├─ resnet_weightmse     - using resnet_weightmse
+└──resnet_hybridloss    - using resnet_hybridloss
 
 Conclusions:
 - training using memmap arrays works same as npz - very good correlations of true and predicted SSE values are still observed when training only on brain data
